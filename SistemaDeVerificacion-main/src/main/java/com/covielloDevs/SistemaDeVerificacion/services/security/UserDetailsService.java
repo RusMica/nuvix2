@@ -31,7 +31,7 @@ public class UserDetailsService implements org.springframework.security.core.use
         return new User(
                 usuario.getUsername(),
                 usuario.getPassword(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().toUpperCase()))
+                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name().toUpperCase()))
         );
     }
 }
