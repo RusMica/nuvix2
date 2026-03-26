@@ -35,33 +35,40 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> {
-                    auth
-                            // Permitir preflight CORS
-                            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                            // Endpoints Públicos (no requieren autenticación)
-                            .requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
-                            .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
-                            // Endpoints Protegidos (requieren rol ADMIN o DEV)
-                            .requestMatchers("/v1/users/admin/**", "/v1/data/**",
-                                                        "/v1/eventos/**", "/v1/payment/**")
-                                                        .hasAnyRole("ADMIN", "DEV", "USER_PAID", "USER_TRIAL")
-                            .requestMatchers("/v1/participantes/**", "/v1/qr/validate-qr")
-                            .hasAnyRole("USER_PAID","USER_PAID_MONTHLY_COMMON", "USER_PAID_MONTHLY_PROFESSIONAL",
-                                        "USER_PAID_MONTHLY_CORPORATE", "USER_TRIAL", "DEV")
-                            // Cualquier otra petición requiere autenticación
-                            .anyRequest().authenticated();
-                })
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
+   @Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    return http.csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> {
+                auth
+                        // 1. Permitir preflight CORS (SIEMPRE primero)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Endpoints Públicos (Agregamos /v1/users/email aquí)
+                        .requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
+                        .requestMatchers("/v1/users/email").permitAll() // <-- ESTA ES LA CLAVE PARA EL ERROR 403
+                        .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
+
+                        // 3. Endpoints Protegidos por Roles (ADMIN o DEV)
+                        .requestMatchers("/v1/users/admin/**", "/v1/data/**", 
+                                         "/v1/eventos/**", "/v1/payment/**")
+                                .hasAnyRole("ADMIN", "DEV", "USER_PAID", "USER_TRIAL")
+
+                        // 4. Endpoints específicos de suscripción
+                        .requestMatchers("/v1/participantes/**", "/v1/qr/validate-qr")
+                                .hasAnyRole("USER_PAID", "USER_PAID_MONTHLY_COMMON", 
+                                            "USER_PAID_MONTHLY_PROFESSIONAL", 
+                                            "USER_PAID_MONTHLY_CORPORATE", "USER_TRIAL", "DEV")
+
+                        // 5. Cualquier otra petición requiere estar autenticado
+                        .anyRequest().authenticated();
+            })
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
+}
 
     @Bean
     public PasswordEncoder passwordEncoder(){
@@ -84,18 +91,17 @@ public class SecurityConfig {
   @Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-
-    // Opción A: Permitir solo tu localhost (Más seguro)
-    configuration.setAllowedOrigins(List.of("http://localhost:3000")); 
     
-    // Opción B: Si quieres permitir "todo", debes poner allowCredentials en false
-    // configuration.setAllowedOriginPatterns(List.of("*"));
-    // configuration.setAllowCredentials(false); 
+    // Agregamos localhost Y la URL de Render (reemplaza con la URL de tu front si es distinta)
+    configuration.setAllowedOrigins(List.of(
+        "http://localhost:3000", 
+        "https://nuvix2.onrender.com" 
+    )); 
 
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
-    configuration.setAllowCredentials(true); // Necesario si envías el JWT en las cookies o headers específicos
-    configuration.setExposedHeaders(List.of("Authorization")); // Para que el front pueda leer el token
+    configuration.setAllowCredentials(true);
+    configuration.setExposedHeaders(List.of("Authorization"));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
