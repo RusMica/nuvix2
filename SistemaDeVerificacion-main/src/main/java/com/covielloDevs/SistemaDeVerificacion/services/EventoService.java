@@ -40,32 +40,62 @@ public class  EventoService {
         this.dataReaderService = dataReaderService;
     }
 
-    @Transactional
-    public DtoDatosEvento createEvento(Long usuarioId, DtoCreateEvento eventoDto){
-        Usuario usuario = usuarioRepository.findByIdWithLicencias(usuarioId)
-            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+@Transactional
+public DtoDatosEvento createEvento(Long usuarioId, DtoCreateEvento eventoDto){
 
-        if(usuario.getRol().equals(Rol.DEV)) return createEventoDev(usuario.getId(), eventoDto);
+    Usuario usuario = usuarioRepository.findByIdWithLicencias(usuarioId)
+        .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    
+    
+    System.out.println("🔥 ENTRE A createEvento");
+   System.out.println("ROL: " + usuario.getRol());
+System.out.println("LICENCIAS: " + usuario.getLicencias());
 
-        List<Licencia> licencias = usuario.getLicencias().stream().filter(Licencia::getActiva).toList();
-        if(licencias.isEmpty()) throw new LicenciaNoActivaException("El usuario no posee licencias activas");
-        licenciaService.useLicencia(licencias.get(new Random().nextInt(licencias.size())).getToken());
-        Evento evento = new Evento(eventoDto);
-        evento.setAnfitrion(usuario);
-        evento.setEstadoEvento(EstadoEvento.ACTIVO); // <-- SOLUCIÓN
-        return new DtoDatosEvento(eventoRepository.save(evento));
-    }
+    // ✅ ACÁ VA
+  boolean esAdminODev = usuario.getRol() == Rol.DEV || usuario.getRol() == Rol.ADMIN;
+
+List<Licencia> licencias = usuario.getLicencias()
+        .stream()
+        .filter(Licencia::getActiva)
+        .toList();
+
+// ❌ SOLO usuarios normales
+if(!licenciaService.tieneLicenciaActiva(usuario)){
+    throw new LicenciaNoActivaException("El usuario no posee licencias activas");
+}
+
+// ❌ SOLO usuarios normales
+if(!esAdminODev){
+    licenciaService.useLicencia(
+        licencias.get(new Random().nextInt(licencias.size())).getToken()
+    );
+}
+
+    Evento evento = new Evento(eventoDto);
+    evento.setAnfitrion(usuario);
+    evento.setEstadoEvento(EstadoEvento.ACTIVO);
+
+    return new DtoDatosEvento(eventoRepository.save(evento));
+}
 
     public Evento updateEvento(Evento evento){
         return eventoRepository.save(evento);
     }
 
-    public Map<String, String> uploadListaParticipantes(@PathVariable Long id, MultipartFile file) throws Exception {
-        Evento evento = findEventoById(id);
-        evento.setListaParticipantes(dataReaderService.saveFile(file));
-        updateEvento(evento);
-        return Map.of("url", evento.getListaParticipantes());
+    public Map<String, String> uploadListaParticipantes(Long usuarioId, Long eventoId, MultipartFile file) throws Exception {
+
+    Evento evento = findEventoById(eventoId);
+
+    // 🔐 VALIDACIÓN CLAVE (esto evita el 403)
+    if (!evento.getAnfitrion().getId().equals(usuarioId)) {
+        throw new RuntimeException("No autorizado para modificar este evento");
     }
+
+    evento.setListaParticipantes(dataReaderService.saveFile(file));
+    updateEvento(evento);
+
+    return Map.of("url", evento.getListaParticipantes());
+}
 
     public DtoDatosEvento updateEvento(DtoUpdateEvento evento, Long id){
         Evento eventoToUpdate = findEventoById(id);
@@ -112,13 +142,5 @@ public class  EventoService {
         updateEvento(evento);
     }
 
-    @Transactional
-    private DtoDatosEvento createEventoDev(Long usuarioId, DtoCreateEvento eventoDto){
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-        Evento evento = new Evento(eventoDto);
-        evento.setAnfitrion(usuario);
-        evento.setEstadoEvento(EstadoEvento.ACTIVO); // <-- SOLUCIÓN
-        return new DtoDatosEvento(eventoRepository.save(evento));
-    }
+  
 }

@@ -38,7 +38,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
@@ -46,7 +46,7 @@ public class SecurityConfig {
                             // Permitir preflight CORS
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             // Endpoints Públicos (no requieren autenticación)
-                            .requestMatchers("/v1/auth/**").permitAll()
+                            .requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
                             .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
                             // Endpoints Protegidos (requieren rol ADMIN o DEV)
                             .requestMatchers("/v1/users/admin/**", "/v1/data/**",
@@ -81,18 +81,24 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-   @Bean
+  @Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
 
-    configuration.setAllowedOriginPatterns(List.of("*")); // 👈 clave
+    // Opción A: Permitir solo tu localhost (Más seguro)
+    configuration.setAllowedOrigins(List.of("http://localhost:3000")); 
+    
+    // Opción B: Si quieres permitir "todo", debes poner allowCredentials en false
+    // configuration.setAllowedOriginPatterns(List.of("*"));
+    // configuration.setAllowCredentials(false); 
+
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("*"));
-    configuration.setAllowCredentials(true);
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+    configuration.setAllowCredentials(true); // Necesario si envías el JWT en las cookies o headers específicos
+    configuration.setExposedHeaders(List.of("Authorization")); // Para que el front pueda leer el token
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
-
     return source;
 }
 }

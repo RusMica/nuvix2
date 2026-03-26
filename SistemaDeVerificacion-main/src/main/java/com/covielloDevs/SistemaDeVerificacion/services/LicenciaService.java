@@ -36,10 +36,20 @@ public class LicenciaService {
     }
 
     public void useLicencia(UUID token){
-        Licencia licencia = licenciaRepository.findByToken(token)
-                .orElseThrow(() -> new LicenciaNotFoundException("Licencia no encontrada"));
-        disableLicencia(licencia);
+
+    Licencia licencia = licenciaRepository.findByToken(token)
+            .orElseThrow(() -> new LicenciaNotFoundException("Licencia no encontrada"));
+
+    Usuario usuario = licencia.getUsuario();
+
+    // 🔥 ADMIN / DEV = licencia infinita
+    if(usuario.getRol() == Rol.ADMIN || usuario.getRol() == Rol.DEV){
+        System.out.println("🔥 Licencia infinita - no se consume");
+        return;
     }
+
+    disableLicencia(licencia);
+}
 
     public Licencia getLicenciaByUsuario(Usuario usuario){
         return licenciaRepository.findByUsuario(usuario)
@@ -49,6 +59,17 @@ public class LicenciaService {
     public Boolean licenciaIsExpired(Licencia licencia){
         return licenciaRepository.isLicenciaExpired(licencia.getToken().toString(), LocalDate.now());
     }
+    
+    public boolean tieneLicenciaActiva(Usuario usuario){
+
+    if(usuario.getRol() == Rol.ADMIN || usuario.getRol() == Rol.DEV){
+        return true; // 🔥 licencia infinita
+    }
+
+    return usuario.getLicencias()
+            .stream()
+            .anyMatch(Licencia::getActiva);
+}
 
     private void disableLicencia(Licencia licencia){
         licencia.setActiva(false);

@@ -1,4 +1,5 @@
 package com.covielloDevs.SistemaDeVerificacion.controllers;
+import com.covielloDevs.SistemaDeVerificacion.models.usuario.Usuario;
 
 import com.covielloDevs.SistemaDeVerificacion.models.dto.DtoCrearPreferenciaPago;
 import com.covielloDevs.SistemaDeVerificacion.services.pagos.PagoMercadopagoService;
@@ -10,6 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import com.covielloDevs.SistemaDeVerificacion.repositories.UsuarioRepository;
 
 import java.util.Map;
 
@@ -21,20 +25,37 @@ public class MercadopagoController {
 
     private final PagoMercadopagoService pagoMercadopagoService;
     private final WebHookService webHookService;
-    public MercadopagoController(PagoMercadopagoService pagoMercadopagoService, WebHookService webHookService) {
-        this.pagoMercadopagoService = pagoMercadopagoService;
-        this.webHookService = webHookService;
-    }
+    private final UsuarioRepository usuarioRepository;
 
-    @PostMapping("/buy-license")
-    public ResponseEntity<Map<String, String>> createPayment(@RequestBody DtoCrearPreferenciaPago datosPreferencia) {
-        try {
-            return ResponseEntity.ok(pagoMercadopagoService.crearPreferenciaDePago(datosPreferencia));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al crear la preferencia de pago: " + e.getMessage()));
-        }
+    public MercadopagoController(PagoMercadopagoService pagoMercadopagoService,
+                             WebHookService webHookService,
+                             UsuarioRepository usuarioRepository) {
+    this.pagoMercadopagoService = pagoMercadopagoService;
+    this.webHookService = webHookService;
+    this.usuarioRepository = usuarioRepository;
+}
+    
+@PostMapping("/buy-license")
+public ResponseEntity<Map<String, String>> createPayment(
+        @AuthenticationPrincipal UserDetails userDetails,
+        @RequestBody DtoCrearPreferenciaPago datosPreferencia) {
+
+    try {
+        String email = userDetails.getUsername();
+
+        // 🔥 ACÁ necesitás tu repo
+        Usuario usuario = usuarioRepository.findByUsername(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return ResponseEntity.ok(
+                pagoMercadopagoService.crearPreferenciaDePago(usuario.getId(), datosPreferencia)
+        );
+
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error al crear la preferencia de pago: " + e.getMessage()));
     }
+}
 
     @PostMapping(path = "/notifications", consumes = {MediaType.APPLICATION_JSON_VALUE,
             MediaType.APPLICATION_FORM_URLENCODED_VALUE})

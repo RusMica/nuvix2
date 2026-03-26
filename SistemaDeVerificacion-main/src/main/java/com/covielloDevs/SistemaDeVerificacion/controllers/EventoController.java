@@ -59,11 +59,15 @@ public class EventoController {
     }
 
     @PatchMapping("/add/lista/{id}")
-    public ResponseEntity<Map<String, String>> uploadListaParticipantes(@PathVariable Long id,
-                                                                        @RequestParam MultipartFile file)
-            throws Exception {
-        return ResponseEntity.ok(eventoService.uploadListaParticipantes(id, file));
-    }
+public ResponseEntity<Map<String, String>> uploadListaParticipantes(
+        @AuthenticationPrincipal Usuario usuario,
+        @PathVariable Long id,
+        @RequestParam MultipartFile file) throws Exception {
+
+    return ResponseEntity.ok(
+        eventoService.uploadListaParticipantes(usuario.getId(), id, file)
+    );
+}
     @PatchMapping("/finish/{id}")
     public ResponseEntity<Map<String, String>> finishEvento(@PathVariable Long id){
         eventoService.finishEvento(id);

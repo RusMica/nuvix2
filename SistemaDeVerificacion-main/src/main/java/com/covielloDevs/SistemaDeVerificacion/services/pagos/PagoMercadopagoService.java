@@ -1,4 +1,5 @@
 package com.covielloDevs.SistemaDeVerificacion.services.pagos;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.covielloDevs.SistemaDeVerificacion.models.Setting;
 import com.covielloDevs.SistemaDeVerificacion.models.dto.DtoCrearPreferenciaPago;
@@ -17,6 +18,7 @@ import com.mercadopago.resources.preference.Preference;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.covielloDevs.SistemaDeVerificacion.models.usuario.Usuario;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,7 +36,7 @@ public class PagoMercadopagoService {
 
     @Value("${mercadopago.default.image.url:}")
     private String defaultImageUrl;
-    @Value("${1mercadopago.back.success.url:}")
+    @Value("${mercadopago.back.success.url:}")
     private String backSuccessUrl;
     @Value("${mercadopago.back.pending.url:}")
     private String backPendingUrl;
@@ -59,26 +61,32 @@ public class PagoMercadopagoService {
         return paymentClient.get(paymentId);
     }
 
-    public Map<String, String> crearPreferenciaDePago(DtoCrearPreferenciaPago datosPreferencia)
-            throws MPException, MPApiException, MalformedURLException {
-        Preference preference = preferenceClient.create(construirPreferencia(datosPreferencia));
-        return Map.of("preferenceId", preference.getId());
-    }
+public Map<String, String> crearPreferenciaDePago(Long usuarioId, DtoCrearPreferenciaPago datosPreferencia)
+        throws MPException, MPApiException, MalformedURLException {
 
-    private PreferenceRequest construirPreferencia(DtoCrearPreferenciaPago datosPreferencia)
-                                                                                        throws MalformedURLException {
-        PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
-                .items(List.of(crearItemPreferencia(datosPreferencia)))
-                .backUrls(configureBackURLs());
+    Preference preference = preferenceClient.create(construirPreferencia(usuarioId, datosPreferencia));
+    return Map.of("preferenceId", preference.getId());
+}
 
-        String baseUrl = getBaseUrl(backSuccessUrl);
+   private PreferenceRequest construirPreferencia(Long usuarioId, DtoCrearPreferenciaPago datosPreferencia)
+        throws MalformedURLException {
 
-        if(StringUtils.hasText(baseUrl)) builder.notificationUrl(baseUrl + notificationPath);
+    PreferenceRequest.PreferenceRequestBuilder builder = PreferenceRequest.builder()
+            .items(List.of(crearItemPreferencia(datosPreferencia)))
+            .backUrls(configureBackURLs())
+            // 🔥 ESTA ES LA LINEA CLAVE
+            .externalReference(String.valueOf(usuarioId));
 
-        if (StringUtils.hasText(getValidAutoReturnMode())) builder.autoReturn(getValidAutoReturnMode());
+    String baseUrl = getBaseUrl(backSuccessUrl);
 
-        return builder.build();
-    }
+    if (StringUtils.hasText(baseUrl))
+        builder.notificationUrl(baseUrl + notificationPath);
+
+    if (StringUtils.hasText(getValidAutoReturnMode()))
+        builder.autoReturn(getValidAutoReturnMode());
+
+    return builder.build();
+}
 
     private PreferenceItemRequest crearItemPreferencia(DtoCrearPreferenciaPago datosPreferencia) {
         PreferenceItemRequest.PreferenceItemRequestBuilder item = PreferenceItemRequest.builder();

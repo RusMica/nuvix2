@@ -15,9 +15,17 @@ public class UserDetailsService implements org.springframework.security.core.use
         this.usuarioRepository = usuarioRepository;
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return usuarioRepository.findByUsername(username)
-                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado"));
-    }
+  @Override
+public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+
+    Usuario usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+    System.out.println("ROL DESDE SECURITY: " + usuario.getRol());
+
+    return new User(
+            usuario.getUsername(),
+            usuario.getPassword(),
+            List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name()))
+    );
 }
