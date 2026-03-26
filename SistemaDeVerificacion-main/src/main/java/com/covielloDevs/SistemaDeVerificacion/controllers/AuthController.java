@@ -9,6 +9,7 @@ import com.covielloDevs.SistemaDeVerificacion.models.usuario.dto.DtoRegistroUsua
 import com.covielloDevs.SistemaDeVerificacion.services.security.AuthService;
 import com.covielloDevs.SistemaDeVerificacion.services.EmailCodeService;
 import com.covielloDevs.SistemaDeVerificacion.services.UsuarioService;
+import com.covielloDevs.SistemaDeVerificacion.repositories.UsuarioRepository;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -26,19 +27,35 @@ public class AuthController {
     private final AuthService authService;
     private final EmailCodeService emailCodeService;
     private final UsuarioService usuarioService;
+    private final UsuarioRepository usuarioRepository;
 
-    public AuthController(AuthService authService, EmailCodeService emailCodeService, UsuarioService usuarioService) {
+ public AuthController(AuthService authService, 
+                          EmailCodeService emailCodeService, 
+                          UsuarioService usuarioService,
+                          UsuarioRepository usuarioRepository) { // <-- Lo recibimos aquí
         this.authService = authService;
         this.emailCodeService = emailCodeService;
         this.usuarioService = usuarioService;
+        this.usuarioRepository = usuarioRepository; // <-- Lo asignamos
     }
 
     @PostMapping("/login")
-    public ResponseEntity<DtoTokenUser> authenticate(@RequestBody DtoAuthUser request){
+public ResponseEntity<DtoTokenUser> authenticate(@RequestBody DtoAuthUser request) {
+        // Ejecutamos la autenticación
         String token = authService.authenticate(request);
-        return ResponseEntity.ok(new DtoTokenUser(token));
-    }
+        
+        // Buscamos al usuario por el email que viene en la request
+        var usuario = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // Enviamos el Token, el Rol (como String) y el Email al nuevo Record
+        return ResponseEntity.ok(new DtoTokenUser(
+            token, 
+            usuario.getRol().name(), 
+            usuario.getEmail()
+        ));
+    }
+}
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@RequestBody @Valid DtoRegistroUsuario request)
             throws MessagingException {
