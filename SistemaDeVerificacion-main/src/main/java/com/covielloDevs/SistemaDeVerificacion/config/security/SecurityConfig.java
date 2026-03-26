@@ -35,7 +35,7 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-   @Bean
+ @Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -43,33 +43,32 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth
-                        // 1. Permitir preflight CORS (SIEMPRE primero)
+                        // 1. Preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 2. Endpoints Públicos (Agregamos /v1/users/email aquí)
+                        // 2. Endpoints Públicos
                         .requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
-                        .requestMatchers("/v1/users/email").permitAll() // <-- ESTA ES LA CLAVE PARA EL ERROR 403
+                        .requestMatchers("/v1/users/email").permitAll() 
                         .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
 
-                        // 3. Endpoints Protegidos por Roles (ADMIN o DEV)
+                        // 3. Endpoints Protegidos (Usamos hasAnyAuthority con el nombre exacto)
                         .requestMatchers("/v1/users/admin/**", "/v1/data/**", 
                                          "/v1/eventos/**", "/v1/payment/**")
-                                .hasAnyRole("ADMIN", "DEV", "USER_PAID", "USER_TRIAL")
+                                .hasAnyAuthority("ROLE_ADMIN", "ROLE_DEV", "ROLE_USER_PAID", "ROLE_USER_TRIAL")
 
                         // 4. Endpoints específicos de suscripción
                         .requestMatchers("/v1/participantes/**", "/v1/qr/validate-qr")
-                                .hasAnyRole("USER_PAID", "USER_PAID_MONTHLY_COMMON", 
-                                            "USER_PAID_MONTHLY_PROFESSIONAL", 
-                                            "USER_PAID_MONTHLY_CORPORATE", "USER_TRIAL", "DEV")
+                                .hasAnyAuthority("ROLE_USER_PAID", "ROLE_USER_PAID_MONTHLY_COMMON", 
+                                                 "ROLE_USER_PAID_MONTHLY_PROFESSIONAL", 
+                                                 "ROLE_USER_PAID_MONTHLY_CORPORATE", "ROLE_USER_TRIAL", "ROLE_DEV")
 
-                        // 5. Cualquier otra petición requiere estar autenticado
+                        // 5. El resto requiere autenticación
                         .anyRequest().authenticated();
             })
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
 }
-
     @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
@@ -88,19 +87,22 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-  @Bean
+ @Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    
-    // Agregamos localhost Y la URL de Render (reemplaza con la URL de tu front si es distinta)
-    configuration.setAllowedOrigins(List.of(
-        "http://localhost:3000", 
-        "https://nuvix2.onrender.com" 
-    )); 
+
+    // Esto permite cualquier origen, ideal para despliegues en Render
+    configuration.setAllowedOriginPatterns(List.of("*")); 
 
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
-    configuration.setAllowCredentials(true);
+    
+    // Permitimos todos los headers para evitar que falte alguno (como Authorization)
+    configuration.setAllowedHeaders(List.of("*"));
+    
+    // IMPORTANTE: Si usas patterns con "*", allowCredentials debe ser true 
+    // para que el frontend pueda enviar el Token JWT
+    configuration.setAllowCredentials(true); 
+    
     configuration.setExposedHeaders(List.of("Authorization"));
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
