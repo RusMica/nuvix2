@@ -42,11 +42,14 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<DtoTokenUser> authenticate(@RequestBody DtoAuthUser request) {
+        // 1. Autenticación (aquí usamos .email() y .password() si son records)
         String token = authService.authenticate(request);
         
-       var usuario = usuarioRepository.findByEmail(request.email())
+        // 2. Buscamos al usuario usando .email() sin el "get"
+        Usuario usuario = usuarioRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // 3. Devolvemos el record con los 3 datos
         return ResponseEntity.ok(new DtoTokenUser(
             token, 
             usuario.getRol().name(), 
