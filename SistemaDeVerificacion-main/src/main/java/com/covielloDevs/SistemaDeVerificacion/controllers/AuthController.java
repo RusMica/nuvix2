@@ -44,7 +44,7 @@ public class AuthController {
     public ResponseEntity<DtoTokenUser> authenticate(@RequestBody DtoAuthUser request) {
         String token = authService.authenticate(request);
         
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+       var usuario = usuarioRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         return ResponseEntity.ok(new DtoTokenUser(
