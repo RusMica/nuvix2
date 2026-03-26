@@ -48,13 +48,13 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
 
                         // 2. Endpoints Públicos
                         .requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
-                        .requestMatchers("/v1/users/email").permitAll() 
+                        .requestMatchers("/v1/users/email").authenticated()
                         .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
 
                         // 3. Endpoints Protegidos (Usamos hasAnyAuthority con el nombre exacto)
                         .requestMatchers("/v1/users/admin/**", "/v1/data/**", 
                                          "/v1/eventos/**", "/v1/payment/**")
-                                .hasAnyAuthority("ROLE_ADMIN", "ROLE_DEV", "ROLE_USER_PAID", "ROLE_USER_TRIAL")
+                                .hasAnyAuthority("ADMIN", "ROLE_ADMIN", "DEV", "USER_PAID", "ROLE_DEV", "ROLE_USER_PAID", "USER_TRIAL", "ROLE_USER_TRIAL")
 
                         // 4. Endpoints específicos de suscripción
                         .requestMatchers("/v1/participantes/**", "/v1/qr/validate-qr")
