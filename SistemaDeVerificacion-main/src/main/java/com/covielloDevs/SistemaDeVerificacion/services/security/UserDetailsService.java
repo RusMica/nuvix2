@@ -1,10 +1,14 @@
 package com.covielloDevs.SistemaDeVerificacion.services.security;
 
+import com.covielloDevs.SistemaDeVerificacion.entities.Usuario; // <-- Asegúrate de que esta ruta sea la correcta
 import com.covielloDevs.SistemaDeVerificacion.repositories.UsuarioRepository;
-import com.covielloDevs.SistemaDeVerificacion.utils.exceptions.usuario.UsuarioNotFoundException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.List; // <-- Faltaba esta
 
 @Service
 public class UserDetailsService implements org.springframework.security.core.userdetails.UserDetailsService {
@@ -15,17 +19,19 @@ public class UserDetailsService implements org.springframework.security.core.use
         this.usuarioRepository = usuarioRepository;
     }
 
-  @Override
-public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Buscamos al usuario en la base de datos
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
 
-    Usuario usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+        System.out.println("ROL DESDE SECURITY: " + usuario.getRol());
 
-    System.out.println("ROL DESDE SECURITY: " + usuario.getRol());
-
-    return new User(
-            usuario.getUsername(),
-            usuario.getPassword(),
-            List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name()))
-    );
+        // Retornamos la implementación de UserDetails de Spring Security
+        return new User(
+                usuario.getUsername(),
+                usuario.getPassword(),
+                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name()))
+        );
+    }
 }
