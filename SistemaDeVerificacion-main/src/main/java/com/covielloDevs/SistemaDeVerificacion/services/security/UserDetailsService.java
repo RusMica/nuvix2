@@ -1,6 +1,6 @@
 package com.covielloDevs.SistemaDeVerificacion.services.security;
 
-import com.covielloDevs.SistemaDeVerificacion.entities.Usuario; // <-- Asegúrate de que esta ruta sea la correcta
+import com.covielloDevs.SistemaDeVerificacion.models.usuario.Usuario; 
 import com.covielloDevs.SistemaDeVerificacion.repositories.UsuarioRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
