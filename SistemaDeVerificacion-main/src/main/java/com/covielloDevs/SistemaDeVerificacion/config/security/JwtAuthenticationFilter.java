@@ -1,7 +1,6 @@
 package com.covielloDevs.SistemaDeVerificacion.config.security;
 
 import com.covielloDevs.SistemaDeVerificacion.services.security.JwtService;
-import com.covielloDevs.SistemaDeVerificacion.services.security.UserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,41 +27,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
- @Override
-protected void doFilterInternal(HttpServletRequest request, 
-                                HttpServletResponse response, 
-                                FilterChain filterChain) throws ServletException, IOException {
-    
-    final String authHeader = request.getHeader("Authorization");
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+        
+        final String authHeader = request.getHeader("Authorization");
 
-    // 1. Si no hay cabecera o no empieza con Bearer, seguimos al siguiente filtro
-    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-        filterChain.doFilter(request, response);
-        return;
-    }
-
-    try {
-        final String jwt = authHeader.substring(7);
-        final String userEmail = jwtService.extractUsername(jwt);
-
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        // Si no hay token, seguimos adelante sin bloquear (SecurityConfig decidirá después)
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
-    } catch (Exception e) {
-        // 2. MUY IMPORTANTE: Si el token falló, no lanzamos error.
-        // Solo dejamos que la petición siga. Si la ruta es pública (como el login), 
-        // pasará. Si es privada, el FilterChain de Spring se encargará del 403 después.
-        System.out.println("JWT inválido o expirado: " + e.getMessage());
-    }
 
-    filterChain.doFilter(request, response);
-}
+        try {
+            final String jwt = authHeader.substring(7);
+            
+            // IMPORTANTE: Si te da error en 'extractUsername', 
+            // cámbialo por el nombre que tengas en tu JwtService (ej: getUsername)
+            final String userEmail = jwtService.extractUsername(jwt);
+
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+        } catch (Exception e) {
+            // Si el token es basura, registramos el error pero NO cortamos la petición.
+            // Esto permite que el usuario pueda volver a loguearse.
+            logger.error("Error procesando JWT: " + e.getMessage());
+        }
+
+        filterChain.doFilter(request, response);
+    }
 }
