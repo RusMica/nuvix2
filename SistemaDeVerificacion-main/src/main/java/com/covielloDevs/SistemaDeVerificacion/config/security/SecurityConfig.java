@@ -95,7 +95,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-@Bean
+/*@Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
     
@@ -119,5 +119,14 @@ public CorsConfigurationSource corsConfigurationSource() {
     // 5. Registro y retorno
     source.registerCorsConfiguration("/**", configuration);
     return source;
+}*/
+    
+    @Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    return http
+        .csrf(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()) // <--- PRUEBA ESTO
+        .build();
 }
 }
