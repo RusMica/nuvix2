@@ -35,7 +35,7 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
- @Bean
+ /*@Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http
             // 1. Desactivamos CSRF (necesario para APIs) y configuramos CORS
@@ -76,7 +76,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             
             .build();
-}
+}*/
     @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
@@ -95,7 +95,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-/*@Bean
+@Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
     
@@ -119,7 +119,7 @@ public CorsConfigurationSource corsConfigurationSource() {
     // 5. Registro y retorno
     source.registerCorsConfiguration("/**", configuration);
     return source;
-}*/
+}
     
     @Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
