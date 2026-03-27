@@ -50,8 +50,10 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                         //.requestMatchers("/v1/auth/**", "/v1/auth/register").permitAll()
                        // .requestMatchers("/v1/users/email").authenticated()
                         // Busca esta línea y asegúrate de que esté ARRIBA de todas las demás reglas
-.requestMatchers(HttpMethod.GET, "/v1/users/email").permitAll() 
-.requestMatchers("/v1/auth/**").permitAll()
+.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        // Ponemos la ruta que falla como TOTALMENTE PÚBLICA arriba de todo
+        .requestMatchers("/v1/users/email").permitAll() 
+        .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/payment/notifications").permitAll()
 
                         // 3. Endpoints Protegidos (Usamos hasAnyAuthority con el nombre exacto)
