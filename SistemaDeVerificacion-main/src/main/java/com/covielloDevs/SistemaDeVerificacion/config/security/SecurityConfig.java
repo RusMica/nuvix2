@@ -95,21 +95,17 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
  @Bean
 public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-
-    // Esto permite cualquier origen, ideal para despliegues en Render
-    configuration.setAllowedOriginPatterns(List.of("*")); 
-
-    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     
-    // Permitimos todos los headers para evitar que falte alguno (como Authorization)
-    configuration.setAllowedHeaders(List.of("*"));
+    // Agregamos tanto el local como el de Render
+    configuration.setAllowedOrigins(List.of(
+        "http://https://nuvix2.onrender.com",           // Tu PC
+        "https://localhost:3000" // Tu sitio en Render
+    )); 
     
-    // IMPORTANTE: Si usas patterns con "*", allowCredentials debe ser true 
-    // para que el frontend pueda enviar el Token JWT
-    configuration.setAllowCredentials(true); 
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+    configuration.setAllowCredentials(true);
     
-    configuration.setExposedHeaders(List.of("Authorization"));
-
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
